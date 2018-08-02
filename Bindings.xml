@@ -1,0 +1,5 @@
+<Bindings>
+    <Binding name="LINK_GRABBER_NAME" header="LINK_GRABBER_HEAD" category="AddOns" runOnUp="true" default="CTRL-C">
+        linkGrabberRun()
+    </Binding>
+</Bindings>

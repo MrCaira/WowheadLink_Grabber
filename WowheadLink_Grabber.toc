@@ -1,0 +1,11 @@
+## Interface: 80000
+## Version: v1.4.0
+## Title: Wowhead Link Grabber
+## Notes: Simple way to get a wowhead link!
+## Author: MrCaira
+## X-Curse-Packaged-Version: v1.0
+## X-Curse-Project-Name: Wowhead Link Grabber
+## X-Curse-Project-ID: wowhead-link-grabber
+## X-Curse-Repository-ID: wow/wowhead-link-grabber/mainline
+
+WowheadLink_Grabber.lua
