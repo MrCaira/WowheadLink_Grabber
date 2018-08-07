@@ -180,9 +180,8 @@ end
 local function QuestWidget(widget)
   if not widget then return end
   local qid = widget.questID or widget.questId or widget.questid or nil
-  if qid then return found("quest", qid, select(4, GetTaskInfo(qid))) end
+  if qid and qid > 0 then return found("quest", qid, select(4, GetTaskInfo(qid))) end
 end
-
 
 local function TrackWidget(widget)
   if not widget then return end
@@ -215,14 +214,10 @@ customframes = {
   ["AchievementFrameAchievementsContainerButton"] = AchievmentWidget,
   ["QuestScrollFrame"] = QuestWidget,
   ["ObjectiveTrackerBlocksFrameHeader"] = TrackWidget,
-
   ["ObjectiveTrackerBlocksFrame"] = TrackWorldQuestWidget, -- World Quest support
-  ["WorldMapFrameTaskPOI"] = WolrdQuestWidget, -- World Quest support
 
   -- 3rd party AddOns
-  ["WorldQuestTrackerZonePOIWidget"] = WolrdQuestWidget, -- World Quest Tracker support
   ["WorldQuestTracker_Tracker"] = TrackWorldQuestWidget, -- World Quest Tracker support
-
   ["ClassicQuestLogScrollFrameButton"] = QuestWidget, -- Classic Quest Log support
   ["WQT_QuestScrollFrameButton"] = QuestWidget -- World Quest Tab support
 }
