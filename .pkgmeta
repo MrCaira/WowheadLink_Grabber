@@ -1,0 +1,7 @@
+package-as: WowheadLink_Grabber
+
+license-output: LICENSE.txt
+
+ignore:
+    - README.md
+    - License.md
