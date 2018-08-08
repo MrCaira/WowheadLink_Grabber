@@ -1,0 +1,3 @@
+Version: 80000.01-Release
+- Changed how version numbering works, for more clarity.
+- Added support for both Classic Quest Log AND World Quest Tab by requests.
