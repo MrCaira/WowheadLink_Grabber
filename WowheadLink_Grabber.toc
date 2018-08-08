@@ -1,5 +1,5 @@
 ## Interface: 80000
-## Version: v1.4.0
+## Version: 80000.01-Release
 ## Title: Wowhead Link Grabber
 ## Notes: Simple way to get a wowhead link!
 ## Author: MrCaira
