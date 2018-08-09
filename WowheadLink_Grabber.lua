@@ -1,4 +1,5 @@
 local tooltipInfo = {}
+local prof_link
 local customframes;
 local wowheadLink = "wowhead.com/"
 local hash = ""
@@ -31,6 +32,7 @@ local validfounds = {
 
 local function clearTooltipInfo(tooltip)
   wipe(tooltipInfo[tooltip])
+	prof_link = nil;
 end
 
 local function setTooltipHyperkink(tooltip, hyperlink)
@@ -42,15 +44,27 @@ local function setTooltipAura(tooltip, unit, index, filter)
   local ttable = tooltipInfo[tooltip];
   local name = UnitAura(unit, index, filter);
   local id = select(10, UnitAura(unit, index, filter));
-  --print("Name: "..name.." = ID: "..id)
+  --print("\nName: "..name.."\nID: "..id)
   ttable.aura = id
   ttable.name = name
+end
+
+local function setTooltipReagent(tooltip, tradeSkillId, reagentID)
+	if not tooltip then return end
+	if tradeSkillId and reagentID then
+		local link = C_TradeSkillUI.GetRecipeReagentItemLink(tradeSkillId, reagentID)
+		if link then
+			prof_link = link
+			--print("\nLink: "..plink)
+		end
+	end
 end
 
 local function hookTooltip(tooltip)
   tooltipInfo[tooltip] = {}
   hooksecurefunc(tooltip, "SetHyperlink", setTooltipHyperkink)
   hooksecurefunc(tooltip, "SetUnitAura", setTooltipAura)
+  hooksecurefunc(tooltip, "SetRecipeReagentItem", setTooltipReagent)
   tooltip:HookScript("OnTooltipCleared", clearTooltipInfo)
 end
 
@@ -64,6 +78,47 @@ end
 local function onUpdate()
   StaticPopup_Show("WOWHEAD_LINK_GRABBER")
   frame:Hide();
+end
+
+local function foundplayer(name)
+  return true;
+end
+
+local function getUnitInfo(unit, name)
+  if UnitIsPlayer(unit) then
+    return foundplayer(name)
+  else
+    local GUID = UnitGUID(unit)
+    local type, _, _, _, _, id = strsplit("-", GUID);
+    if type == "Creature" then return found("npc", id, name) end
+  end
+end
+
+local function getFocusInfo()
+  local focus = GetMouseFocus()
+  local current = focus;
+  local focusname;
+  --__LASTFRAME = focus;
+  while current and (not focusname) do
+		
+    -- Added by fuba82 for World Quest support in BfA
+    if WorldMapFrame and WorldMapFrame:IsVisible() and current and current.questID and QuestMapFrame_IsQuestWorldQuest(current.questID) then
+      return found("quest", current.questID, select(4, GetTaskInfo(current.questID)))
+    end
+
+    focusname = current:GetName()
+    current = current:GetParent()
+  end
+
+  if not focusname then return end
+  local focuslen = string.len(focusname);
+  --print(focusname);
+  for name, func in pairs(customframes) do
+    local customlen = string.len(name)
+    if customlen <= focuslen and name == string.sub(focusname, 1, customlen) then
+      if func(focus, focusname) then return true end
+    end
+  end
 end
 
 local function found(ftype, id, name)
@@ -88,47 +143,6 @@ local function found(ftype, id, name)
   end
 end
 
-local function foundplayer(name)
-  return true;
-end
-
-local function getUnitInfo(unit, name)
-  if UnitIsPlayer(unit) then
-    return foundplayer(name)
-  else
-    local GUID = UnitGUID(unit)
-    local type, _, _, _, _, id = strsplit("-", GUID);
-    if type == "Creature" then return found("npc", id, name) end
-  end
-end
-
-local function getFocusInfo()
-  local focus = GetMouseFocus()
-  local current = focus;
-  local focusname;
-  --__LASTFRAME = focus;
-  while current and (not focusname) do
-
-    -- Added by fuba82 for World Quest support in BfA
-    if WorldMapFrame and WorldMapFrame:IsVisible() and current and current.questID and QuestMapFrame_IsQuestWorldQuest(current.questID) then
-      return found("quest", current.questID, select(4, GetTaskInfo(current.questID)))
-    end
-
-    focusname = current:GetName()
-    current = current:GetParent()
-  end
-
-  if not focusname then return end
-  local focuslen = string.len(focusname);
-  --print(focusname);
-  for name, func in pairs(customframes) do
-    local customlen = string.len(name)
-    if customlen <= focuslen and name == string.sub(focusname, 1, customlen) then
-      if func(focus, focusname) then return true end
-    end
-  end
-end
-
 local function parseLink(link)
   local linkstart = string.find(link, "|H")
   local _, lastfound, type, id = string.find(link, "(%a+):(%d+):", linkstart and linkstart + 2)
@@ -137,6 +151,10 @@ local function parseLink(link)
 end
 
 local function parseTooltip(tooltip)
+	if prof_link then return parseLink(prof_link) end
+	if ttdata and ttdata.hl then return parseLink(ttdata.hl) end
+  if ttdata and ttdata.aura then return found("spell", ttdata.aura, ttdata.name) end
+	
   local name, link = tooltip:GetItem()
   if name then return parseLink(link) end
   --local name, _, id = tooltip:GetSpell();
@@ -145,8 +163,7 @@ local function parseTooltip(tooltip)
   local name, unit = tooltip:GetUnit()
   if unit then return getUnitInfo(unit, name) end
   local ttdata = tooltipInfo[tooltip];
-  if ttdata.hl then return parseLink(ttdata.hl) end
-  if ttdata.aura then return found("spell", ttdata.aura, ttdata.name) end
+ 
 end
 
 local function linkGrabberRunInternal()
