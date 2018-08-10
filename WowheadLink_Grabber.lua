@@ -1,5 +1,4 @@
 local tooltipInfo = {}
-local prof_link
 local customframes;
 local wowheadLink = "wowhead.com/"
 local hash = ""
@@ -32,7 +31,7 @@ local validfounds = {
 
 local function clearTooltipInfo(tooltip)
   wipe(tooltipInfo[tooltip])
-	prof_link = nil;
+	--prof_link = nil;
 end
 
 local function setTooltipHyperkink(tooltip, hyperlink)
@@ -54,7 +53,8 @@ local function setTooltipReagent(tooltip, tradeSkillId, reagentID)
 	if tradeSkillId and reagentID then
 		local link = C_TradeSkillUI.GetRecipeReagentItemLink(tradeSkillId, reagentID)
 		if link then
-			prof_link = link
+			local ttable = tooltipInfo[tooltip];
+			ttable.hl = link;
 			--print("\nLink: "..plink)
 		end
 	end
@@ -84,43 +84,6 @@ local function foundplayer(name)
   return true;
 end
 
-local function getUnitInfo(unit, name)
-  if UnitIsPlayer(unit) then
-    return foundplayer(name)
-  else
-    local GUID = UnitGUID(unit)
-    local type, _, _, _, _, id = strsplit("-", GUID);
-    if type == "Creature" then return found("npc", id, name) end
-  end
-end
-
-local function getFocusInfo()
-  local focus = GetMouseFocus()
-  local current = focus;
-  local focusname;
-  --__LASTFRAME = focus;
-  while current and (not focusname) do
-		
-    -- Added by fuba82 for World Quest support in BfA
-    if WorldMapFrame and WorldMapFrame:IsVisible() and current and current.questID and QuestMapFrame_IsQuestWorldQuest(current.questID) then
-      return found("quest", current.questID, select(4, GetTaskInfo(current.questID)))
-    end
-
-    focusname = current:GetName()
-    current = current:GetParent()
-  end
-
-  if not focusname then return end
-  local focuslen = string.len(focusname);
-  --print(focusname);
-  for name, func in pairs(customframes) do
-    local customlen = string.len(name)
-    if customlen <= focuslen and name == string.sub(focusname, 1, customlen) then
-      if func(focus, focusname) then return true end
-    end
-  end
-end
-
 local function found(ftype, id, name)
   local foundAccept = validfounds[ftype];
   if foundAccept then
@@ -143,6 +106,43 @@ local function found(ftype, id, name)
   end
 end
 
+local function getUnitInfo(unit, name)
+  if UnitIsPlayer(unit) then
+    return foundplayer(name)
+  else
+    local GUID = UnitGUID(unit)
+    local type, _, _, _, _, id = strsplit("-", GUID);
+    if type == "Creature" then return found("npc", id, name) end
+  end
+end
+
+local function getFocusInfo()
+  local focus = GetMouseFocus()
+  local current = focus;
+  local focusname;
+  --__LASTFRAME = focus;
+  while current and (not focusname) do
+			
+    -- Added by fuba82 for World Quest support in BfA
+    if WorldMapFrame and WorldMapFrame:IsVisible() and current and current.questID and QuestMapFrame_IsQuestWorldQuest(current.questID) then
+      return found("quest", current.questID, select(4, GetTaskInfo(current.questID)))
+    end
+
+    focusname = current:GetName()
+    current = current:GetParent()
+  end
+
+  if not focusname then return end
+  local focuslen = string.len(focusname);
+  --print(focusname);
+  for name, func in pairs(customframes) do
+    local customlen = string.len(name)
+    if customlen <= focuslen and name == string.sub(focusname, 1, customlen) then
+      if func(focus, focusname) then return true end
+    end
+  end
+end
+
 local function parseLink(link)
   local linkstart = string.find(link, "|H")
   local _, lastfound, type, id = string.find(link, "(%a+):(%d+):", linkstart and linkstart + 2)
@@ -151,19 +151,17 @@ local function parseLink(link)
 end
 
 local function parseTooltip(tooltip)
-	if prof_link then return parseLink(prof_link) end
+	local ttdata = tooltipInfo[tooltip];
 	if ttdata and ttdata.hl then return parseLink(ttdata.hl) end
   if ttdata and ttdata.aura then return found("spell", ttdata.aura, ttdata.name) end
-	
+		
   local name, link = tooltip:GetItem()
   if name then return parseLink(link) end
   --local name, _, id = tooltip:GetSpell();
   local name, id = tooltip:GetSpell();
   if name then return found("spell", id, name) end
   local name, unit = tooltip:GetUnit()
-  if unit then return getUnitInfo(unit, name) end
-  local ttdata = tooltipInfo[tooltip];
- 
+  if unit then return getUnitInfo(unit, name) end 
 end
 
 local function linkGrabberRunInternal()
