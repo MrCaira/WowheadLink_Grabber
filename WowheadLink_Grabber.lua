@@ -6,6 +6,21 @@ local frame = CreateFrame("Frame")
 local gotoLink = ""
 local QuestMapFrame_IsQuestWorldQuest = QuestMapFrame_IsQuestWorldQuest or QuestUtils_IsQuestWorldQuest
 
+local loctable = {
+  ["enUS"] = "en-us",
+  ["esMX"] = "es-mx",
+  ["ptBR"] = "pt-br",
+  ["koKR"] = "ko-kr",
+  ["zhCN"] = "zh-cn",
+  ["zhTW"] = "zh-tw",
+  ["enGB"] = "en-gb",
+  ["frFR"] = "fr-fr",
+  ["deDE"] = "de-de",
+  ["itIT"] = "it-it",
+  ["esES"] = "es-es",
+  ["ruRU"] = "ru-ru",
+}
+
 local validfounds = {
   npc = "",
   spell = GetSpellInfo,
@@ -31,7 +46,6 @@ local validfounds = {
 
 local function clearTooltipInfo(tooltip)
   wipe(tooltipInfo[tooltip])
-	--prof_link = nil;
 end
 
 local function setTooltipHyperkink(tooltip, hyperlink)
@@ -49,15 +63,15 @@ local function setTooltipAura(tooltip, unit, index, filter)
 end
 
 local function setTooltipReagent(tooltip, tradeSkillId, reagentID)
-	if not tooltip then return end
-	if tradeSkillId and reagentID then
-		local link = C_TradeSkillUI.GetRecipeReagentItemLink(tradeSkillId, reagentID)
-		if link then
-			local ttable = tooltipInfo[tooltip];
-			ttable.hl = link;
-			--print("\nLink: "..plink)
-		end
-	end
+  if not tooltip then return end
+  if tradeSkillId and reagentID then
+    local link = C_TradeSkillUI.GetRecipeReagentItemLink(tradeSkillId, reagentID)
+    if link then
+      local ttable = tooltipInfo[tooltip];
+      ttable.hl = link;
+    --print("\nLink: "..link)
+    end
+  end
 end
 
 local function hookTooltip(tooltip)
@@ -80,8 +94,29 @@ local function onUpdate()
   frame:Hide();
 end
 
-local function foundplayer(name)
-  return true;
+local function foundplayer(unit)
+  if not unit then return end
+
+  local name, realm = UnitFullName(unit)
+  realm = realm or GetRealmName()
+  if name and realm then
+    wwwrealm = realm:gsub("'", "")
+
+    local reg = GetCurrentRegion()
+    local isEU = reg == 3
+    local loc = GetLocale()
+    if reg == 3 and loc == "enUS" then loc = "enGB" end
+    local sitelocale = loctable[loc] or (isEU and "en-gb" or "en-us")
+
+    local link = "https://worldofwarcraft.com/"..sitelocale.."/character/{realm-}/{name}";
+    link = link:gsub("{realm%-}", ""..wwwrealm:gsub(" ","-"));
+    link = link:gsub("{name}", name);
+
+    gotoLink = link
+    StaticPopupDialogs["WOWHEAD_LINK_GRABBER"].text = "|cffffff00".. "Armory URL" ..":\n|r" .. name .. " - " .. realm .. "\n\n|cff00ff00CTRL+C to copy!|r";
+    frame:Show();
+    return true;
+  end
 end
 
 local function found(ftype, id, name)
@@ -108,7 +143,7 @@ end
 
 local function getUnitInfo(unit, name)
   if UnitIsPlayer(unit) then
-    return foundplayer(name)
+    return foundplayer(unit)
   else
     local GUID = UnitGUID(unit)
     local type, _, _, _, _, id = strsplit("-", GUID);
@@ -120,10 +155,9 @@ local function getFocusInfo()
   local focus = GetMouseFocus()
   local current = focus;
   local focusname;
-  --__LASTFRAME = focus;
   while current and (not focusname) do
-			
-    -- Added by fuba82 for World Quest support in BfA
+
+    -- World Quest support in BfA
     if WorldMapFrame and WorldMapFrame:IsVisible() and current and current.questID and QuestMapFrame_IsQuestWorldQuest(current.questID) then
       return found("quest", current.questID, select(4, GetTaskInfo(current.questID)))
     end
@@ -151,17 +185,16 @@ local function parseLink(link)
 end
 
 local function parseTooltip(tooltip)
-	local ttdata = tooltipInfo[tooltip];
-	if ttdata and ttdata.hl then return parseLink(ttdata.hl) end
+  local ttdata = tooltipInfo[tooltip];
+  if ttdata and ttdata.hl then return parseLink(ttdata.hl) end
   if ttdata and ttdata.aura then return found("spell", ttdata.aura, ttdata.name) end
-		
+
   local name, link = tooltip:GetItem()
   if name then return parseLink(link) end
-  --local name, _, id = tooltip:GetSpell();
   local name, id = tooltip:GetSpell();
   if name then return found("spell", id, name) end
   local name, unit = tooltip:GetUnit()
-  if unit then return getUnitInfo(unit, name) end 
+  if unit then return getUnitInfo(unit, name) end
 end
 
 local function linkGrabberRunInternal()
@@ -172,7 +205,6 @@ end
 
 linkGrabberRun = function()
   linkGrabberRunInternal()
-  --pcall(linkGrabberRunInternal);
 end
 
 -- Formatting
@@ -181,7 +213,6 @@ function firstToUpper(str)
 end
 
 -- Custom frames mouseover
-
 local function AchievmentWidget(widget)
   if not widget then return end
   return found("achievement", widget.id);
@@ -209,7 +240,6 @@ local function TrackWidget(widget)
   end
 end
 
--- Added by fuba82 for World Quest support
 local function TrackWorldQuestWidget(widget)
   local module = widget.module;
   if module == WORLD_QUEST_TRACKER_MODULE then
