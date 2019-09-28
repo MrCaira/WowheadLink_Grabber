@@ -1,3 +1,8 @@
+Version: 80205.01-Release
+ - Updated TOC for 8.2
+ - Added Support for World of Warcraft Classic
+ - renamed .pkgmeta to pkgmeta.yaml to match new Curseforge
+
 Version: 80000.03-Release
 - Added support for Player Links to Wow Armory
 

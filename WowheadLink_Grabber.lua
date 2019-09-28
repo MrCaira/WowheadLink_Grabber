@@ -1,10 +1,12 @@
 local tooltipInfo = {}
 local customframes;
 local wowheadLink = "wowhead.com/"
+local wowheadLinkFinal = ""
 local hash = ""
 local frame = CreateFrame("Frame")
 local gotoLink = ""
 local QuestMapFrame_IsQuestWorldQuest = QuestMapFrame_IsQuestWorldQuest or QuestUtils_IsQuestWorldQuest
+local isClassicWow = select(4,GetBuildInfo()) < 20000
 
 local loctable = {
   ["enUS"] = "en-us",
@@ -20,6 +22,18 @@ local loctable = {
   ["esES"] = "es-es",
   ["ruRU"] = "ru-ru",
 }
+
+local locale = string.sub(GetLocale(), 1, 2)
+if locale == "zh" then locale = "cn" end
+if locale ~= "en" then
+	wowheadLinkFinal = locale.."."..wowheadLink	
+  hash = "#english-comments"
+end
+
+if (isClassicWow) then
+	if locale == "en" then locale = "classic" else locale = locale..".classic" end
+	wowheadLinkFinal = locale.."."..wowheadLink
+end
 
 local validfounds = {
   npc = "",
@@ -78,7 +92,7 @@ local function hookTooltip(tooltip)
   tooltipInfo[tooltip] = {}
   hooksecurefunc(tooltip, "SetHyperlink", setTooltipHyperkink)
   hooksecurefunc(tooltip, "SetUnitAura", setTooltipAura)
-  hooksecurefunc(tooltip, "SetRecipeReagentItem", setTooltipReagent)
+  --hooksecurefunc(tooltip, "SetRecipeReagentItem", setTooltipReagent)
   tooltip:HookScript("OnTooltipCleared", clearTooltipInfo)
 end
 
@@ -95,7 +109,7 @@ local function onUpdate()
 end
 
 local function foundplayer(unit)
-  if not unit then return end
+  if ( (not unit) or (isClassicWow) ) then return end
 
   local name, realm = UnitFullName(unit)
   realm = realm or GetRealmName()
@@ -130,7 +144,7 @@ local function found(ftype, id, name)
     --print("Found "..type.." "..id)
     -- Show frame to recieve OnUpdate next frame
     -- So pressed hotkey doesnt erase text field
-    gotoLink = "http://" .. wowheadLink .. ftype .. "=" .. id .. hash;
+    gotoLink = "http://" .. wowheadLinkFinal .. ftype .. "=" .. id .. hash;
     local upper_name = firstToUpper(ftype)
     if QuestMapFrame_IsQuestWorldQuest(id) then
       upper_name = firstToUpper("World Quest");
@@ -229,6 +243,16 @@ local function QuestWidget(widget)
   if qid and qid > 0 then return found("quest", qid, select(4, GetTaskInfo(qid))) end
 end
 
+local function QuestWidgetClassic(widget)
+	if widget.isHeader then return end
+  local i = widget:GetID();
+  if i then
+    local name = GetQuestLogTitle(i);
+    local id = select(8,GetQuestLogTitle(i));
+    found("quest", id, name);
+  end
+end
+
 local function TrackWidget(widget)
   if not widget then return end
   local parent = widget:GetParent()
@@ -241,6 +265,7 @@ local function TrackWidget(widget)
 end
 
 local function TrackWorldQuestWidget(widget)
+	if not widget then return end
   local module = widget.module;
   if module == WORLD_QUEST_TRACKER_MODULE then
     if widget.id then
@@ -253,6 +278,44 @@ local function TrackWorldQuestWidget(widget)
   end
 end
 
+local function BFAMissionFrameFollowers(widget)
+	if not widget then return end
+	if (not BFAMissionFrame) or (not BFAMissionFrame:IsVisible()) then return end
+	local parent = widget:GetParent()
+	if not parent then return end
+	local follower = parent.Follower
+	if not follower then return end
+	local info = follower.info;	
+	if not info then return end
+	--UIParentLoadAddOn("Blizzard_DebugTools");
+	--DevTools_Dump(follower)
+	local name = info.name;
+	local fID = info.followerID;
+	local campID = info.garrFollowerID or info.followerID;
+	local troop = info.isTroop;
+	local faction = UnitFactionGroup("player");
+	if (not faction) or (not campID) then return end
+	
+	local cID;
+	if faction == "Horde" then
+		cID = ""..campID..".2";
+	elseif faction == "Alliance" then
+		cID = ""..campID..".1";
+	end
+	if not cID then return end
+	
+	local dString;
+	if troop then
+		dString = "Troop"
+	else
+		dString = "Champion"
+	end
+	
+	gotoLink = "https://www.wowhead.com/bfa-champion="..cID;
+	StaticPopupDialogs["WOWHEAD_LINK_GRABBER"].text = "|cffffff00"..dString.. ":\n|r" .. name .. "\n\n|cff00ff00CTRL+C to copy!|r";
+	frame:Show();
+end
+
 customframes = {
   ["AchievementFrameCriteria"] = AchievmentWidgetParent,
   ["AchievementFrameSummaryAchievement"] = AchievmentWidget,
@@ -260,23 +323,21 @@ customframes = {
   ["QuestScrollFrame"] = QuestWidget,
   ["ObjectiveTrackerBlocksFrameHeader"] = TrackWidget,
   ["ObjectiveTrackerBlocksFrame"] = TrackWorldQuestWidget, -- World Quest support
+  ["BFAMissionFrameFollowersListScrollFrameButton"] = BFAMissionFrameFollowers, -- BfA Missions NPC Support
 
   -- 3rd party AddOns
   ["WorldQuestTracker_Tracker"] = TrackWorldQuestWidget, -- World Quest Tracker support
   ["ClassicQuestLogScrollFrameButton"] = QuestWidget, -- Classic Quest Log support
-  ["WQT_QuestScrollFrameButton"] = QuestWidget -- World Quest Tab support
+  ["WQT_QuestScrollFrameButton"] = QuestWidget, -- World Quest Tab support
+	
+	-- Classic Quest Title
+  ["QuestLogTitle"] = QuestWidgetClassic,
 }
 
 frame:Hide()
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:SetScript("OnEvent", onEvent)
 frame:SetScript("OnUpdate", onUpdate)
-
-local locale = string.sub(GetLocale(), 1, 2)
-if locale ~= "en" then
-  wowheadLink = locale.."."..wowheadLink
-  hash = "#english-comments"
-end
 
 BINDING_HEADER_LINK_GRABBER_HEAD = "Wowhead Link Grabber"
 BINDING_DESCRIPTION_LINK_GRABBER_DESC = "Hotkey for displaying wowhead link"

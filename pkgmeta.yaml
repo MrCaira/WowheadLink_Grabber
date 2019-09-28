@@ -1,8 +1,10 @@
 package-as: WowheadLink_Grabber
 
-license-output: License.md
+license-output: LICENSE.txt
 
 manual-changelog: CHANGELOG.txt
 
 ignore:
-    - README.md
+  - README.md
+  - CHANGES.txt
+  - LICENSE.md
