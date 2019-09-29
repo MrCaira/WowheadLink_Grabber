@@ -1,5 +1,5 @@
-## Interface: 80205
-## Version: 80205.01-Release
+## Interface: 11302
+## Version: 11302.01-Classic
 ## Title: Wowhead Link Grabber
 ## Notes: Simple way to get a wowhead link!
 ## Author: MrCaira

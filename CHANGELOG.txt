@@ -1,3 +1,6 @@
+Version: 11302.01-Classic
+ - TOC Update for Classic Release at Twitch Client
+
 Version: 80205.01-Release
  - Updated TOC for 8.2
  - Added Support for World of Warcraft Classic
