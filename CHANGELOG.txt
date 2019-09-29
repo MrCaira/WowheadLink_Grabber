@@ -1,3 +1,22 @@
+Version: 11302.03-Classic
+ - just Classic TOC update
+
+Version: 80205.03-Release
+ - Added Support for:
+   Currency
+   Battle Pets
+   Mounts
+   Profession Reagents
+   
+ - Fixed:
+   wrong WowHead URL
+
+Version: 11302.02-Classic
+ - fail release - deleted
+
+Version: 80205.02-Release
+ - fail release - deleted
+
 Version: 11302.01-Classic
  - TOC Update for Classic Release at Twitch Client
 
