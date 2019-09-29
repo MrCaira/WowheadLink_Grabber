@@ -28,6 +28,8 @@ if locale == "zh" then locale = "cn" end
 if locale ~= "en" then
 	wowheadLinkFinal = locale.."."..wowheadLink	
   hash = "#english-comments"
+else
+	wowheadLinkFinal = wowheadLink
 end
 
 if (isClassicWow) then
@@ -37,6 +39,7 @@ end
 
 local validfounds = {
   npc = "",
+	mount = "Mount",
   spell = GetSpellInfo,
   achievement = function(id)
     return select(2, GetAchievementInfo(id))
@@ -55,52 +58,53 @@ local validfounds = {
       return "Quest";
     end
   end,
-  item = GetItemInfo
+  item = GetItemInfo,
+	currency = "Currency"
 }
 
 local function clearTooltipInfo(tooltip)
   wipe(tooltipInfo[tooltip])
 end
 
+--[[
 local function setTooltipHyperkink(tooltip, hyperlink)
   local ttable = tooltipInfo[tooltip];
-  ttable.hl = hyperlink;
+	ttable.hl = hyperlink;
 end
+]]
 
 local function setTooltipAura(tooltip, unit, index, filter)
   local ttable = tooltipInfo[tooltip];
   local name = UnitAura(unit, index, filter);
   local id = select(10, UnitAura(unit, index, filter));
-  --print("\nName: "..name.."\nID: "..id)
+ -- print("\nName: "..name.."\nID: "..id)
   ttable.aura = id
   ttable.name = name
 end
 
-local function setTooltipReagent(tooltip, tradeSkillId, reagentID)
-  if not tooltip then return end
-  if tradeSkillId and reagentID then
-    local link = C_TradeSkillUI.GetRecipeReagentItemLink(tradeSkillId, reagentID)
-    if link then
-      local ttable = tooltipInfo[tooltip];
-      ttable.hl = link;
-    --print("\nLink: "..link)
-    end
-  end
+local function doSetRecipeReagentItem(tooltip, recipeId, reagentIndex)
+	if not tooltip then return end
+	if recipeId and reagentIndex then		
+		--print("\nRecipeID: "..recipeId.."\nReagentIndex: "..reagentIndex.."\nLink: ")
+		local ttable = tooltipInfo[tooltip];
+			ttable.recipeId = recipeId
+			ttable.reagentIndex = reagentIndex
+	end
 end
 
 local function hookTooltip(tooltip)
   tooltipInfo[tooltip] = {}
-  hooksecurefunc(tooltip, "SetHyperlink", setTooltipHyperkink)
+  --hooksecurefunc(tooltip, "SetHyperlink", setTooltipHyperkink)
+	hooksecurefunc(tooltip, "SetRecipeReagentItem", doSetRecipeReagentItem)
   hooksecurefunc(tooltip, "SetUnitAura", setTooltipAura)
-  --hooksecurefunc(tooltip, "SetRecipeReagentItem", setTooltipReagent)
   tooltip:HookScript("OnTooltipCleared", clearTooltipInfo)
 end
 
-local function onEvent(frame, event)
+local function onEvent(frame, event, addon, ...)
   if event == "PLAYER_ENTERING_WORLD" then
     hookTooltip(GameTooltip)
     hookTooltip(ItemRefTooltip)
-  end
+	end
 end
 
 local function onUpdate()
@@ -174,7 +178,19 @@ local function getFocusInfo()
     -- World Quest support in BfA
     if WorldMapFrame and WorldMapFrame:IsVisible() and current and current.questID and QuestMapFrame_IsQuestWorldQuest(current.questID) then
       return found("quest", current.questID, select(4, GetTaskInfo(current.questID)))
-    end
+    end		
+
+		-- BattletPet #2
+		if PetJournal and PetJournal:IsVisible() and current and current.speciesID then
+			local name, _, _, id = C_PetJournal.GetPetInfoBySpeciesID(current.speciesID)
+			if id then
+				local dString = "Battle Pet"
+				gotoLink = "https://" .. wowheadLinkFinal .. "npc=" .. id;
+				StaticPopupDialogs["WOWHEAD_LINK_GRABBER"].text = "|cffffff00"..dString.. ":\n|r" .. name .. "\n\n|cff00ff00CTRL+C to copy!|r";
+				frame:Show();
+				return true
+			end
+		end
 
     focusname = current:GetName()
     current = current:GetParent()
@@ -182,7 +198,7 @@ local function getFocusInfo()
 
   if not focusname then return end
   local focuslen = string.len(focusname);
-  --print(focusname);
+  --print("\nFocusName: "..focusname.."\n");
   for name, func in pairs(customframes) do
     local customlen = string.len(name)
     if customlen <= focuslen and name == string.sub(focusname, 1, customlen) then
@@ -200,8 +216,25 @@ end
 
 local function parseTooltip(tooltip)
   local ttdata = tooltipInfo[tooltip];
-  if ttdata and ttdata.hl then return parseLink(ttdata.hl) end
-  if ttdata and ttdata.aura then return found("spell", ttdata.aura, ttdata.name) end
+	if ttdata and ttdata.recipeId and ttdata.reagentIndex then
+		local recipeId = tonumber(ttdata.recipeId)
+		local reagentIndex = tonumber(ttdata.reagentIndex)
+		local link = C_TradeSkillUI.GetRecipeReagentItemLink(recipeId, reagentIndex)
+		--print("\nRecipeID: "..recipeId.."\nReagentIndex: "..reagentIndex.."\nLink: "..tostring(link))
+		return parseLink(link)
+	end
+	
+	--[[
+  if ttdata and ttdata.hl then
+		--print("\nHyperlink: "..ttdata.hl)
+		return parseLink(ttdata.hl)
+	end
+	]]
+	
+  if ttdata and ttdata.aura then
+		--print("\nAuraID: "..ttdata.aura.."\nAuraName: "..ttdata.name)
+		return found("spell", ttdata.aura, ttdata.name)
+	end
 
   local name, link = tooltip:GetItem()
   if name then return parseLink(link) end
@@ -311,9 +344,68 @@ local function BFAMissionFrameFollowers(widget)
 		dString = "Champion"
 	end
 	
-	gotoLink = "https://www.wowhead.com/bfa-champion="..cID;
+	gotoLink = "https://" .. wowheadLinkFinal .. "bfa-champion=" .. cID;
 	StaticPopupDialogs["WOWHEAD_LINK_GRABBER"].text = "|cffffff00"..dString.. ":\n|r" .. name .. "\n\n|cff00ff00CTRL+C to copy!|r";
 	frame:Show();
+end
+
+local function BattlePetWidget(widget)
+	if not widget then return end
+	local speciesID = widget.speciesID
+	if not speciesID then return end
+	local name, _, _, id = C_PetJournal.GetPetInfoBySpeciesID(speciesID)
+	if not id then return end
+	if id then
+		local dString = "Battle Pet"
+		gotoLink = "https://" .. wowheadLinkFinal .. "npc=" .. id;
+		StaticPopupDialogs["WOWHEAD_LINK_GRABBER"].text = "|cffffff00"..dString.. ":\n|r" .. name .. "\n\n|cff00ff00CTRL+C to copy!|r";
+		frame:Show();
+	end
+end
+
+local function RematchCard(widget)
+	if not widget then return end
+	local petID = widget.petID
+	if not petID then
+		if not RematchPetCard then return end
+		petID = RematchPetCard.petID
+	end
+	if not petID then return end
+	local speciesID = C_PetJournal.GetPetInfoByPetID(petID)
+	if not speciesID then return end
+	local name, _, _, id = C_PetJournal.GetPetInfoBySpeciesID(speciesID)
+	if not id then return end
+	if id then
+		local dString = "Battle Pet"
+		gotoLink = "https://" .. wowheadLinkFinal .. "npc=" .. id;
+		StaticPopupDialogs["WOWHEAD_LINK_GRABBER"].text = "|cffffff00"..dString.. ":\n|r" .. name .. "\n\n|cff00ff00CTRL+C to copy!|r";
+		frame:Show();
+	end
+end
+
+local function MountsWidget(widget)
+	if not widget then return end
+	local index = widget.index
+	if not index then return end
+	local name, id = C_MountJournal.GetDisplayedMountInfo(index)
+	if id then
+		local dString = "Mount"
+		gotoLink = "https://" .. wowheadLinkFinal .. "spell=" .. id;
+		StaticPopupDialogs["WOWHEAD_LINK_GRABBER"].text = "|cffffff00"..dString.. ":\n|r" .. name .. "\n\n|cff00ff00CTRL+C to copy!|r";
+		frame:Show();
+	end
+end
+
+local function CurrencyWidget(widget)
+	if not widget then return end
+	local parent = widget:GetParent()	
+	if widget.isHeader or parent.isHeader then return end
+	local index = widget.index or parent.index
+	if not index then return end
+	local link = GetCurrencyListLink(index)
+	if link then
+		return parseLink(link)
+	end
 end
 
 customframes = {
@@ -324,11 +416,20 @@ customframes = {
   ["ObjectiveTrackerBlocksFrameHeader"] = TrackWidget,
   ["ObjectiveTrackerBlocksFrame"] = TrackWorldQuestWidget, -- World Quest support
   ["BFAMissionFrameFollowersListScrollFrameButton"] = BFAMissionFrameFollowers, -- BfA Missions NPC Support
-
+	["MountJournalListScrollFrameButton"] = MountsWidget, -- Mounts #1
+	["PetJournalListScrollFrameButton"] = BattlePetWidget, -- BattlePet #1
+	["TokenFrameContainerButton"] = CurrencyWidget, -- BattlePet #1
+	
   -- 3rd party AddOns
   ["WorldQuestTracker_Tracker"] = TrackWorldQuestWidget, -- World Quest Tracker support
   ["ClassicQuestLogScrollFrameButton"] = QuestWidget, -- Classic Quest Log support
   ["WQT_QuestScrollFrameButton"] = QuestWidget, -- World Quest Tab support
+	
+	-- Battle Pet - Rematch AddOn
+  ["RematchPetPanel"] = RematchCard,
+  ["RematchPetCard"] = RematchCard,
+  ["RematchQueuePanel"] = RematchCard,
+  ["RematchLoadoutPanel"] = RematchCard,
 	
 	-- Classic Quest Title
   ["QuestLogTitle"] = QuestWidgetClassic,
@@ -336,6 +437,7 @@ customframes = {
 
 frame:Hide()
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+frame:RegisterEvent("ADDON_LOADED")
 frame:SetScript("OnEvent", onEvent)
 frame:SetScript("OnUpdate", onUpdate)
 
