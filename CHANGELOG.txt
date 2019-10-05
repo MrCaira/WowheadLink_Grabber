@@ -1,3 +1,10 @@
+Version: 11302.04-Classic
+ - TOC update for Classic
+
+Version: 80205.04-Release
+ - fixed Questlog error for Classic
+ - added debug command for internal testing
+
 Version: 11302.03-Classic
  - just Classic TOC update
 

@@ -1,3 +1,4 @@
+local AddOnName, AddOn = ...
 local tooltipInfo = {}
 local customframes;
 local wowheadLink = "wowhead.com/"
@@ -22,6 +23,10 @@ local loctable = {
   ["esES"] = "es-es",
   ["ruRU"] = "ru-ru",
 }
+
+local function AddOnPrint(msg)
+	(SELECTED_CHAT_FRAME or DEFAULT_CHAT_FRAME):AddMessage("|cffffff78WHLG: |r"..msg)
+end
 
 local locale = string.sub(GetLocale(), 1, 2)
 if locale == "zh" then locale = "cn" end
@@ -63,7 +68,9 @@ local validfounds = {
 }
 
 local function clearTooltipInfo(tooltip)
-  wipe(tooltipInfo[tooltip])
+	if tooltip and tooltipInfo[tooltip] then
+		wipe(tooltipInfo[tooltip])
+	end
 end
 
 --[[
@@ -93,17 +100,36 @@ local function doSetRecipeReagentItem(tooltip, recipeId, reagentIndex)
 end
 
 local function hookTooltip(tooltip)
+	if not tooltip then return end
   tooltipInfo[tooltip] = {}
   --hooksecurefunc(tooltip, "SetHyperlink", setTooltipHyperkink)
-	hooksecurefunc(tooltip, "SetRecipeReagentItem", doSetRecipeReagentItem)
-  hooksecurefunc(tooltip, "SetUnitAura", setTooltipAura)
+	if tooltip.SetRecipeReagentItem or tooltip["SetRecipeReagentItem"] then
+		hooksecurefunc(tooltip, "SetRecipeReagentItem", doSetRecipeReagentItem)
+	end
+	if tooltip.SetUnitAura or tooltip["SetUnitAura"] then
+		hooksecurefunc(tooltip, "SetUnitAura", setTooltipAura)
+	end
   tooltip:HookScript("OnTooltipCleared", clearTooltipInfo)
 end
 
+local tooltipList = {
+	GameTooltip,
+	ItemRefTooltip
+}
+
 local function onEvent(frame, event, addon, ...)
   if event == "PLAYER_ENTERING_WORLD" then
-    hookTooltip(GameTooltip)
-    hookTooltip(ItemRefTooltip)
+		if not WowheadLinkGrabberDB then
+			WowheadLinkGrabberDB = {
+				debug = false,
+			}
+		end
+	
+		for _, tt in ipairs(tooltipList) do
+			if tt then
+				hookTooltip(tt)
+			end
+		end
 	end
 end
 
@@ -198,7 +224,10 @@ local function getFocusInfo()
 
   if not focusname then return end
   local focuslen = string.len(focusname);
-  --print("\nFocusName: "..focusname.."\n");
+	if WowheadLinkGrabberDB.debug then
+		--if not IsAddOnLoaded("Blizzard_DebugTools") then UIParentLoadAddOn("Blizzard_DebugTools");
+		print("\nFocusName: "..focusname.."");
+	end
   for name, func in pairs(customframes) do
     local customlen = string.len(name)
     if customlen <= focuslen and name == string.sub(focusname, 1, customlen) then
@@ -279,9 +308,10 @@ end
 local function QuestWidgetClassic(widget)
 	if widget.isHeader then return end
   local i = widget:GetID();
-  if i then
-    local name = GetQuestLogTitle(i);
-    local id = select(8,GetQuestLogTitle(i));
+	local index = FauxScrollFrame_GetOffset(QuestLogListScrollFrame) + i
+  if index then
+    local name = GetQuestLogTitle(index);
+    local id = select(8,GetQuestLogTitle(index));
     found("quest", id, name);
   end
 end
@@ -462,3 +492,26 @@ StaticPopupDialogs["WOWHEAD_LINK_GRABBER"] = {
   hasEditBox = true,
   preferredIndex = 3
 }
+
+_G['SLASH_' .. AddOnName .."debug" .. 1] = '/wlg'
+_G['SLASH_' .. AddOnName .."debug" .. 2] = '/wowheadlinkgrabber'
+SlashCmdList[AddOnName.."debug"] = function(msg)
+	local cmd = ""
+	if msg and type(msg) == "string" then cmd = msg end
+	if cmd ~= "" then
+		if cmd == "debug" then
+			if WowheadLinkGrabberDB then
+				if WowheadLinkGrabberDB.debug then
+					WowheadLinkGrabberDB.debug = false					
+					AddOnPrint("Debug disabled.")
+				else
+					WowheadLinkGrabberDB.debug = true
+					AddOnPrint("Debug enabled.")
+				end
+			end
+		end
+	else
+		ChatFrame1:AddMessage("|cffffff78WowHead Link Grabber |r/wlg |cffffff78Usage:|r")
+		ChatFrame1:AddMessage("|cffffff78/wlg debug|r - Toggle Debug")
+	end
+end
