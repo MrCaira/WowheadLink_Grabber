@@ -330,6 +330,9 @@ end
 local function TrackWorldQuestWidget(widget)
 	if not widget then return end
   local module = widget.module;
+	if WowheadLinkGrabberDB.debug then
+		print("\widget: "..tostring(widget:GetName()).."");
+	end
   if module == WORLD_QUEST_TRACKER_MODULE then
     if widget.id then
       return found("quest", widget.id, select(4, GetTaskInfo(widget.id)))
@@ -401,8 +404,15 @@ local function RematchCard(widget)
 		petID = RematchPetCard.petID
 	end
 	if not petID then return end
-	local speciesID = C_PetJournal.GetPetInfoByPetID(petID)
-	if not speciesID then return end
+	local speciesID = 0
+	if type(petID)=="string" then		
+		if petID:match("^BattlePet%-%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") then
+			speciesID = C_PetJournal.GetPetInfoByPetID(petID)
+		end
+	elseif type(petID)=="number" then
+		speciesID = petID
+	end
+	if not speciesID or (speciesID == 0) then return end
 	local name, _, _, id = C_PetJournal.GetPetInfoBySpeciesID(speciesID)
 	if not id then return end
 	if id then
@@ -460,6 +470,7 @@ customframes = {
   ["RematchPetCard"] = RematchCard,
   ["RematchQueuePanel"] = RematchCard,
   ["RematchLoadoutPanel"] = RematchCard,
+  ["RematchMiniPanel"] = RematchCard,
 	
 	-- Classic Quest Title
   ["QuestLogTitle"] = QuestWidgetClassic,
