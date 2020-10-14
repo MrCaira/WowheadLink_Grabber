@@ -1,3 +1,10 @@
+Version: 11305.01-Classic
+ - TOC update for Classic
+
+Version: 90001.01-Retail
+ - fixed LUA Error for Rematch
+ - Updated TOC for Shadowlands Pre-Patch
+
 Version: 11302.04-Classic
  - TOC update for Classic
 
