@@ -54,11 +54,15 @@ local validfounds = {
     if QuestMapFrame_IsQuestWorldQuest(id) then
       return select(4, GetTaskInfo(id))
     else
-      for i = 1, GetNumQuestLogEntries() do
-        local name, _, _, _, _, _, _, qid = GetQuestLogTitle(i)
-        if id == qid then
-          return name
-        end
+      for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+				local info = C_QuestLog.GetInfo(i)
+				if not info then return end
+				if not info.isHeader then
+					--local name, _, _, _, _, _, _, qid = C_QuestLog.GetQuestLogTitle(i)
+					if id == info.questID then
+						return info.title
+					end
+				end
       end
       return "Quest";
     end
@@ -68,8 +72,10 @@ local validfounds = {
 }
 
 local function clearTooltipInfo(tooltip)
-	if tooltip and tooltipInfo[tooltip] then
-		wipe(tooltipInfo[tooltip])
+	if tooltip then
+		if tooltipInfo[tooltip] then
+			wipe(tooltipInfo[tooltip])
+		end
 	end
 end
 
@@ -94,21 +100,28 @@ local function doSetRecipeReagentItem(tooltip, recipeId, reagentIndex)
 	if recipeId and reagentIndex then		
 		--print("\nRecipeID: "..recipeId.."\nReagentIndex: "..reagentIndex.."\nLink: ")
 		local ttable = tooltipInfo[tooltip];
-			ttable.recipeId = recipeId
-			ttable.reagentIndex = reagentIndex
+		ttable.recipeId = recipeId
+		ttable.reagentIndex = reagentIndex
 	end
 end
 
 local function hookTooltip(tooltip)
-	if not tooltip then return end
+	if ((not tooltip) or (tooltip:IsForbidden())) then return end
   tooltipInfo[tooltip] = {}
+	WowheadLinkGrabberDB.tooltipInfo = {}
   --hooksecurefunc(tooltip, "SetHyperlink", setTooltipHyperkink)
 	if tooltip.SetRecipeReagentItem or tooltip["SetRecipeReagentItem"] then
 		hooksecurefunc(tooltip, "SetRecipeReagentItem", doSetRecipeReagentItem)
 	end
+	
 	if tooltip.SetUnitAura or tooltip["SetUnitAura"] then
 		hooksecurefunc(tooltip, "SetUnitAura", setTooltipAura)
 	end
+	
+	if tooltip.OnTooltipSetSpell or tooltip["OnTooltipSetSpell"] then
+		hooksecurefunc(tooltip, "OnTooltipSetSpell", setTooltipAura)
+	end
+	
   tooltip:HookScript("OnTooltipCleared", clearTooltipInfo)
 end
 
@@ -124,7 +137,7 @@ local function onEvent(frame, event, addon, ...)
 				debug = false,
 			}
 		end
-	
+		
 		for _, tt in ipairs(tooltipList) do
 			if tt then
 				hookTooltip(tt)
@@ -244,6 +257,8 @@ local function parseLink(link)
 end
 
 local function parseTooltip(tooltip)
+	if tooltip:IsForbidden() then return end
+	
   local ttdata = tooltipInfo[tooltip];
 	if ttdata and ttdata.recipeId and ttdata.reagentIndex then
 		local recipeId = tonumber(ttdata.recipeId)
@@ -263,6 +278,11 @@ local function parseTooltip(tooltip)
   if ttdata and ttdata.aura then
 		--print("\nAuraID: "..ttdata.aura.."\nAuraName: "..ttdata.name)
 		return found("spell", ttdata.aura, ttdata.name)
+	end
+	
+	if ttdata and ttdata.spellid then
+		--print("\nSpellID: "..ttdata.spellid.."\SpellName: "..ttdata.name)
+		return found("spell", ttdata.spellid, ttdata.name)
 	end
 
   local name, link = tooltip:GetItem()
@@ -442,9 +462,23 @@ local function CurrencyWidget(widget)
 	if widget.isHeader or parent.isHeader then return end
 	local index = widget.index or parent.index
 	if not index then return end
-	local link = GetCurrencyListLink(index)
+	local link = C_CurrencyInfo.GetCurrencyListLink(index)
 	if link then
 		return parseLink(link)
+	end
+end
+
+local function SpellButtonWidget(widget)
+	if not widget then return end
+	if SpellBookFrame:IsVisible() then
+		if SpellBookFrame.bookType == BOOKTYPE_SPELL or SpellBookFrame.bookType == BOOKTYPE_PET then
+			local id = SpellBook_GetSpellBookSlot(widget)
+			local name, _, spellid = GetSpellBookItemName(id , SpellBookFrame.bookType)
+			if name and spellid then
+				--print("\nname: "..name.."\nid: "..spellid.."\n")
+				return found("spell", spellid, name)
+			end
+		end
 	end
 end
 
@@ -459,6 +493,7 @@ customframes = {
 	["MountJournalListScrollFrameButton"] = MountsWidget, -- Mounts #1
 	["PetJournalListScrollFrameButton"] = BattlePetWidget, -- BattlePet #1
 	["TokenFrameContainerButton"] = CurrencyWidget, -- BattlePet #1
+	["SpellButton"] = SpellButtonWidget, -- Spell Book Button
 	
   -- 3rd party AddOns
   ["WorldQuestTracker_Tracker"] = TrackWorldQuestWidget, -- World Quest Tracker support
