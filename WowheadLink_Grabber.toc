@@ -1,4 +1,4 @@
-## Interface: 11305
+## Interface: 90002
 ## Version: @project-version@
 ## Title: Wowhead Link Grabber
 ## Notes: Simple way to get a wowhead link!
