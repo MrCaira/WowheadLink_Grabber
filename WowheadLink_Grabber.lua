@@ -339,8 +339,11 @@ end
 local function TrackWidget(widget)
   if not widget then return end
   local parent = widget:GetParent()
+	if not parent then return end
   local module = parent.module;
-  if module == QUEST_TRACKER_MODULE then
+	if not module then return end
+	if (not parent.id) then return end
+  if (module == QUEST_TRACKER_MODULE) or (module == CAMPAIGN_QUEST_TRACKER_MODULE) or (module == SCENARIO_TRACKER_MODULE) or (module == CAMPAIGN_QUEST_TRACKER_MODULE) then
     return found("quest", parent.id)
   elseif module == ACHIEVEMENT_TRACKER_MODULE then
     return found("achievement", parent.id)
@@ -494,6 +497,7 @@ customframes = {
 	["PetJournalListScrollFrameButton"] = BattlePetWidget, -- BattlePet #1
 	["TokenFrameContainerButton"] = CurrencyWidget, -- BattlePet #1
 	["SpellButton"] = SpellButtonWidget, -- Spell Book Button
+	--["WardrobeCollectionFrame "] = WardrobeCollectionFrame
 	
   -- 3rd party AddOns
   ["WorldQuestTracker_Tracker"] = TrackWorldQuestWidget, -- World Quest Tracker support
